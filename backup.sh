@@ -2,17 +2,17 @@
 
 set -e
 
-# --- Default values for script arguments ---
+# Default values for script arguments
 DEFAULT_REMOTE_TARGET_PATH="./" # Default path on the rclone remote
 DEFAULT_BACKUP_PREFIX=""        # Default backup prefix (empty)
 
-# --- Estimate the dir in which the Script is located ---
+# Estimate the dir in which the Script is located
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-# --- Configuration File ---
+# Configuration File
 CONFIG_FILE="${SCRIPT_DIR}/.env"
 
-# --- Helper Functions ---
+# Helper Functions
 log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
@@ -32,7 +32,7 @@ usage() {
   exit 1
 }
 
-# --- Argument Parsing ---
+# Argument Parsing
 ARG_SOURCE_DIR="$1"
 ARG_REMOTE_TARGET_PATH="${2:-$DEFAULT_REMOTE_TARGET_PATH}"
 ARG_BACKUP_PREFIX="${3:-$DEFAULT_BACKUP_PREFIX}"
@@ -47,7 +47,7 @@ if [ ! -d "$ARG_SOURCE_DIR" ]; then
   exit 1
 fi
 
-# --- Load Configuration from .env file ---
+# Load Configuration from .env file
 # These are expected in .env: RCLONE_REMOTE_NAME, KEEP_DAILY, KEEP_WEEKLY, KEEP_MONTHLY
 # Optional in .env: COMPRESSION_LEVEL
 DEFAULT_RCLONE_REMOTE_NAME=""
@@ -72,13 +72,13 @@ KEEP_WEEKLY="${KEEP_WEEKLY:-$DEFAULT_KEEP_WEEKLY}"
 KEEP_MONTHLY="${KEEP_MONTHLY:-$DEFAULT_KEEP_MONTHLY}"
 COMPRESSION_LEVEL="${COMPRESSION_LEVEL:-$DEFAULT_COMPRESSION_LEVEL}"
 
-# --- Validate Essential .env Configuration ---
+# Validate Essential .env Configuration
 if [ -z "$RCLONE_REMOTE_NAME" ]; then
   log "Error: RCLONE_REMOTE_NAME is not set in '$CONFIG_FILE'."
   exit 1
 fi
 
-# --- Validate Tools ---
+# Validate Tools
 if ! command -v rclone &> /dev/null; then
     log "Error: rclone command not found. Please install rclone."
     exit 1
@@ -88,12 +88,12 @@ if ! command -v tar &> /dev/null; then
     exit 1
 fi
 
-# --- Construct full rclone remote path ---
+# Construct full rclone remote path
 # Ensure no double slashes if ARG_REMOTE_TARGET_PATH starts with one, though rclone usually handles it.
 # For simplicity, we'll just concatenate. `remote:path` or `remote:./path`
 FULL_RCLONE_DESTINATION="${RCLONE_REMOTE_NAME}:${ARG_REMOTE_TARGET_PATH}"
 
-log "--- Backup Configuration ---"
+log "--- Backup Configuration"
 log "Source Directory: $ARG_SOURCE_DIR"
 log "Rclone Remote Name: $RCLONE_REMOTE_NAME"
 log "Remote Target Path: $ARG_REMOTE_TARGET_PATH"
@@ -105,7 +105,7 @@ log "Keep Monthly: $KEEP_MONTHLY"
 log "---------------------------"
 
 
-# --- Main Script ---
+# Main Script
 
 # 1. Create Backup Archive
 current_date=$(date '+%Y-%m-%d')
@@ -221,7 +221,7 @@ for backup_file in "${sorted_backups[@]}"; do
   fi
 done
 
-log "--- Retention Summary ---"
+log "--- Retention Summary"
 log "Daily to keep: $KEEP_DAILY. Found qualifying: ${#daily_kept_files[@]}"
 log "Weekly to keep: $KEEP_WEEKLY (distinct weeks). Found qualifying: ${#weekly_kept_weeks[@]}"
 log "Monthly to keep: $KEEP_MONTHLY (distinct months). Found qualifying: ${#monthly_kept_months[@]}"
