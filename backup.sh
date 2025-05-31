@@ -5,6 +5,7 @@ set -e
 # Default values for script arguments
 DEFAULT_REMOTE_TARGET_PATH="./" # Default path on the rclone remote
 DEFAULT_BACKUP_PREFIX=""        # Default backup prefix (empty)
+AUTO_CONFIRM=false              # Default to requiring confirmation
 
 # Estimate the dir in which the Script is located
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -18,13 +19,16 @@ log() {
 }
 
 usage() {
-  echo "Usage: $0 <SOURCE_DIR> [REMOTE_TARGET_PATH] [BACKUP_PREFIX]"
+  echo "Usage: $0 [OPTIONS] <SOURCE_DIR>"
   echo ""
   echo "Arguments:"
   echo "  SOURCE_DIR          : Mandatory. Local directory to back up."
-  echo "  REMOTE_TARGET_PATH  : Optional. Path on the rclone remote where backups will be stored."
-  echo "                        Defaults to '$DEFAULT_REMOTE_TARGET_PATH' (current directory on remote)."
-  echo "  BACKUP_PREFIX       : Optional. Prefix for the backup archive name (e.g., 'mydata')."
+  echo ""
+  echo "Options:"
+  echo "  -y, --yes           : Automatically confirm deletion of old backups."
+  echo "  -r, --remote PATH   : Path on the rclone remote where backups will be stored."
+  echo "                        Defaults to '$DEFAULT_REMOTE_TARGET_PATH'"
+  echo "  -p, --prefix PREFIX : Prefix for the backup archive name (e.g., 'mydata')."
   echo "                        If empty, archive name will be 'YYYY-MM-DD.tar.gz'."
   echo "                        If set, 'YYYY-MM-DD_PREFIX.tar.gz'."
   echo ""
@@ -33,9 +37,38 @@ usage() {
 }
 
 # Argument Parsing
-ARG_SOURCE_DIR="$1"
-ARG_REMOTE_TARGET_PATH="${2:-$DEFAULT_REMOTE_TARGET_PATH}"
-ARG_BACKUP_PREFIX="${3:-$DEFAULT_BACKUP_PREFIX}"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -y|--yes)
+      AUTO_CONFIRM=true
+      shift
+      ;;
+    -r|--remote)
+      ARG_REMOTE_TARGET_PATH="$2"
+      shift 2
+      ;;
+    -p|--prefix)
+      ARG_BACKUP_PREFIX="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      ;;
+    *)
+      if [ -z "$ARG_SOURCE_DIR" ]; then
+        ARG_SOURCE_DIR="$1"
+      else
+        log "Error: Unexpected argument: $1"
+        usage
+      fi
+      shift
+      ;;
+  esac
+done
+
+# Set default values if not provided
+ARG_REMOTE_TARGET_PATH="${ARG_REMOTE_TARGET_PATH:-$DEFAULT_REMOTE_TARGET_PATH}"
+ARG_BACKUP_PREFIX="${ARG_BACKUP_PREFIX:-$DEFAULT_BACKUP_PREFIX}"
 
 if [ -z "$ARG_SOURCE_DIR" ]; then
   log "Error: SOURCE_DIR argument is mandatory."
@@ -234,22 +267,27 @@ if [ ${#to_delete_files[@]} -gt 0 ]; then
   log "Backups to delete (${#to_delete_files[@]}):"
   printf "  %s\n" "${to_delete_files[@]}"
   
-  read -r -p "Proceed with deleting ${#to_delete_files[@]} remote backups? (yes/NO): " confirmation
-  if [[ "$confirmation" =~ ^[yY][eE][sS]$ ]]; then
-    log "Deleting backups..."
-    for file_to_delete in "${to_delete_files[@]}"; do
-      log "Deleting $FULL_RCLONE_DESTINATION/$file_to_delete"
-      # Ensure the path for deletion is correct, rclone delete remote:path/to/file
-      if rclone delete "$FULL_RCLONE_DESTINATION/$file_to_delete"; then
-         log "Successfully deleted $file_to_delete"
-      else
-        log "Error deleting $file_to_delete. Check rclone output."
-      fi
-    done
-    log "Deletion process finished."
+  if [ "$AUTO_CONFIRM" = true ]; then
+    log "Auto-confirmation enabled. Proceeding with deletion..."
   else
-    log "Deletion aborted by user."
+    read -r -p "Proceed with deleting ${#to_delete_files[@]} remote backups? (yes/NO): " confirmation
+    if [[ ! "$confirmation" =~ ^[yY][eE][sS]$ ]]; then
+      log "Deletion aborted by user."
+      exit 0
+    fi
   fi
+  
+  log "Deleting backups..."
+  for file_to_delete in "${to_delete_files[@]}"; do
+    log "Deleting $FULL_RCLONE_DESTINATION/$file_to_delete"
+    # Ensure the path for deletion is correct, rclone delete remote:path/to/file
+    if rclone delete "$FULL_RCLONE_DESTINATION/$file_to_delete"; then
+       log "Successfully deleted $file_to_delete"
+    else
+      log "Error deleting $file_to_delete. Check rclone output."
+    fi
+  done
+  log "Deletion process finished."
 else
   log "No backups to delete according to the retention policy."
 fi
