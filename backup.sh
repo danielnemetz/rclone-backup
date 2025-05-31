@@ -8,6 +8,7 @@ DEFAULT_REMOTE_TARGET_PATH="./" # Default path on the rclone remote
 DEFAULT_BACKUP_PREFIX=""        # Default backup prefix (empty)
 AUTO_CONFIRM=false              # Default to requiring confirmation
 DEFAULT_LOG_LEVEL="INFO"        # Default log level
+DEFAULT_LOG_FILE="/var/log/rclone-backup.log"  # Default log file
 
 # Log levels
 declare -A LOG_LEVELS=(
@@ -32,14 +33,30 @@ validate_log_level() {
 # Validate initial log level
 validate_log_level "$CURRENT_LOG_LEVEL"
 
+# Log file handling
+LOG_FILE="${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}"
+LOG_DIR=$(dirname "$LOG_FILE")
+
+# Create log directory if it doesn't exist
+if [ ! -d "$LOG_DIR" ]; then
+  mkdir -p "$LOG_DIR"
+fi
+
 # Helper Functions
 log() {
   local level="$1"
   local message="$2"
-
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  local log_message="$timestamp - [$level] - $message"
+  
   # Check if the message's level should be displayed
   if [ "${LOG_LEVELS[$level]}" -ge "${LOG_LEVELS[$CURRENT_LOG_LEVEL]}" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - [$level] - $message"
+    # Output to console if not running from cron
+    if [ -t 1 ]; then
+      echo "$log_message"
+    fi
+    # Always write to log file
+    echo "$log_message" >> "$LOG_FILE"
   fi
 }
 
