@@ -87,6 +87,10 @@ if ! command -v tar &> /dev/null; then
     log "Error: tar command not found. Please install tar."
     exit 1
 fi
+if ! command -v gzip &> /dev/null; then
+    log "Error: gzip command not found. Please install gzip."
+    exit 1
+fi
 
 # Construct full rclone remote path
 # Ensure no double slashes if ARG_REMOTE_TARGET_PATH starts with one, though rclone usually handles it.
@@ -125,7 +129,7 @@ log "Creating archive: $archive_name"
 
 source_dir_basename=$(basename "$ARG_SOURCE_DIR")
 
-if tar -C "$(dirname "$ARG_SOURCE_DIR")" -czf "$temp_archive_path" "$source_dir_basename" --owner=0 --group=0; then
+if tar -C "$(dirname "$ARG_SOURCE_DIR")" -czf "$temp_archive_path" "$source_dir_basename" --owner=0 --group=0 --use-compress-program="gzip -${COMPRESSION_LEVEL}"; then
   log "Archive created successfully: $temp_archive_path"
 else
   log "Error: Failed to create archive."
