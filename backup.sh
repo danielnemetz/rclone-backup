@@ -255,10 +255,10 @@ create_backup_archive() {
       --owner=0 --group=0 \
       --use-compress-program="gzip -${compression_level}"; then
     log_info "Archive created successfully: $temp_archive_path"
-    echo "$temp_archive_path"
+    return 0
   else
     log_error "Failed to create archive."
-    exit 1
+    return 1
   fi
 }
 
@@ -273,11 +273,30 @@ upload_backup() {
     log_info "Upload successful."
     rm -f "$archive_path"
     log_info "Local archive $archive_path removed."
+    return 0
   else
     log_error "rclone upload failed."
     rm -f "$archive_path"
-    exit 1
+    return 1
   fi
+}
+
+# Function to parse date from backup filename (YYYY-MM-DD from YYYY-MM-DD_prefix.tar.gz or YYYY-MM-DD.tar.gz)
+get_backup_date_from_filename() {
+  local filename="$1"
+  echo "$filename" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+}
+
+# Function to get week number in a timezone-safe way
+get_week_number() {
+  local date_str="$1"
+  TZ=UTC date -d "$date_str" '+%Y-%V'
+}
+
+# Function to get month in a timezone-safe way
+get_month() {
+  local date_str="$1"
+  TZ=UTC date -d "$date_str" '+%Y-%m'
 }
 
 # Handle backup retention
@@ -397,12 +416,18 @@ else
   archive_name="${archive_name_core}.tar.gz"
 fi
 
-temp_archive_path=$(create_backup_archive "$ARG_SOURCE_DIR" "$archive_name" "$COMPRESSION_LEVEL")
+temp_archive_path="/tmp/${archive_name}"
 
-# Upload backup
-upload_backup "$temp_archive_path" "$FULL_RCLONE_DESTINATION"
-
-# Handle retention
-handle_backup_retention "$FULL_RCLONE_DESTINATION" "$ARG_BACKUP_PREFIX" "$KEEP_DAILY" "$KEEP_WEEKLY" "$KEEP_MONTHLY"
+# Create and upload backup
+if create_backup_archive "$ARG_SOURCE_DIR" "$archive_name" "$COMPRESSION_LEVEL"; then
+  if upload_backup "$temp_archive_path" "$FULL_RCLONE_DESTINATION"; then
+    # Handle retention
+    handle_backup_retention "$FULL_RCLONE_DESTINATION" "$ARG_BACKUP_PREFIX" "$KEEP_DAILY" "$KEEP_WEEKLY" "$KEEP_MONTHLY"
+  else
+    exit 1
+  fi
+else
+  exit 1
+fi
 
 log_info "Backup script finished."
