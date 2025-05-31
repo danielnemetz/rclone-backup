@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -e
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
 
 # Default values for script arguments
 DEFAULT_REMOTE_TARGET_PATH="./" # Default path on the rclone remote
@@ -18,6 +19,40 @@ log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+# Validate compression level
+validate_compression_level() {
+  local level="$1"
+  if ! [[ "$level" =~ ^[1-9]$ ]]; then
+    log "Error: COMPRESSION_LEVEL must be between 1 and 9"
+    exit 1
+  fi
+}
+
+# Check available disk space
+check_disk_space() {
+  local source_dir="$1"
+  local required_space
+  required_space=$(du -s "$source_dir" | awk '{print $1}')
+  required_space=$((required_space * 2)) # Double the size for safety
+  
+  local available_space
+  available_space=$(df -P "$source_dir" | awk 'NR==2 {print $4}')
+  
+  if [ "$available_space" -lt "$required_space" ]; then
+    log "Error: Not enough disk space. Required: ${required_space}KB, Available: ${available_space}KB"
+    exit 1
+  fi
+}
+
+# Validate remote path
+validate_remote_path() {
+  local path="$1"
+  if [[ "$path" =~ \.\./ ]]; then
+    log "Error: Remote path cannot contain '..'"
+    exit 1
+  fi
+}
+
 usage() {
   echo "Usage: $0 [OPTIONS] <SOURCE_DIR>"
   echo ""
@@ -25,12 +60,11 @@ usage() {
   echo "  SOURCE_DIR          : Mandatory. Local directory to back up."
   echo ""
   echo "Options:"
-  echo "  -y, --yes           : Automatically confirm deletion of old backups."
-  echo "  -r, --remote PATH   : Path on the rclone remote where backups will be stored."
+  echo "  -y, --yes           : Automatically confirm deletion of old backups"
+  echo "  -r, --remote PATH   : Path on the rclone remote where backups will be stored"
   echo "                        Defaults to '$DEFAULT_REMOTE_TARGET_PATH'"
-  echo "  -p, --prefix PREFIX : Prefix for the backup archive name (e.g., 'mydata')."
-  echo "                        If empty, archive name will be 'YYYY-MM-DD.tar.gz'."
-  echo "                        If set, 'YYYY-MM-DD_PREFIX.tar.gz'."
+  echo "  -p, --prefix PREFIX : Prefix for the backup archive name"
+  echo "  -h, --help          : Show help message"
   echo ""
   echo "Reads rclone remote name and retention settings from '$CONFIG_FILE'."
   exit 1
@@ -45,6 +79,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -r|--remote)
       ARG_REMOTE_TARGET_PATH="$2"
+      validate_remote_path "$2"
       shift 2
       ;;
     -p|--prefix)
@@ -55,7 +90,7 @@ while [[ $# -gt 0 ]]; do
       usage
       ;;
     *)
-      if [ -z "$ARG_SOURCE_DIR" ]; then
+      if [ -z "${ARG_SOURCE_DIR:-}" ]; then
         ARG_SOURCE_DIR="$1"
       else
         log "Error: Unexpected argument: $1"
@@ -70,7 +105,7 @@ done
 ARG_REMOTE_TARGET_PATH="${ARG_REMOTE_TARGET_PATH:-$DEFAULT_REMOTE_TARGET_PATH}"
 ARG_BACKUP_PREFIX="${ARG_BACKUP_PREFIX:-$DEFAULT_BACKUP_PREFIX}"
 
-if [ -z "$ARG_SOURCE_DIR" ]; then
+if [ -z "${ARG_SOURCE_DIR:-}" ]; then
   log "Error: SOURCE_DIR argument is mandatory."
   usage
 fi
@@ -81,8 +116,6 @@ if [ ! -d "$ARG_SOURCE_DIR" ]; then
 fi
 
 # Load Configuration from .env file
-# These are expected in .env: RCLONE_REMOTE_NAME, KEEP_DAILY, KEEP_WEEKLY, KEEP_MONTHLY
-# Optional in .env: COMPRESSION_LEVEL
 DEFAULT_RCLONE_REMOTE_NAME=""
 DEFAULT_KEEP_DAILY=7
 DEFAULT_KEEP_WEEKLY=4
@@ -98,14 +131,16 @@ else
   exit 1
 fi
 
-# Assign variables from .env or use defaults (though some are now errors if not set)
+# Assign variables from .env or use defaults
 RCLONE_REMOTE_NAME="${RCLONE_REMOTE_NAME:-$DEFAULT_RCLONE_REMOTE_NAME}"
 KEEP_DAILY="${KEEP_DAILY:-$DEFAULT_KEEP_DAILY}"
 KEEP_WEEKLY="${KEEP_WEEKLY:-$DEFAULT_KEEP_WEEKLY}"
 KEEP_MONTHLY="${KEEP_MONTHLY:-$DEFAULT_KEEP_MONTHLY}"
 COMPRESSION_LEVEL="${COMPRESSION_LEVEL:-$DEFAULT_COMPRESSION_LEVEL}"
 
-# Validate Essential .env Configuration
+# Validate configuration
+validate_compression_level "$COMPRESSION_LEVEL"
+
 if [ -z "$RCLONE_REMOTE_NAME" ]; then
   log "Error: RCLONE_REMOTE_NAME is not set in '$CONFIG_FILE'."
   exit 1
@@ -125,9 +160,10 @@ if ! command -v gzip &> /dev/null; then
     exit 1
 fi
 
+# Check disk space before proceeding
+check_disk_space "$ARG_SOURCE_DIR"
+
 # Construct full rclone remote path
-# Ensure no double slashes if ARG_REMOTE_TARGET_PATH starts with one, though rclone usually handles it.
-# For simplicity, we'll just concatenate. `remote:path` or `remote:./path`
 FULL_RCLONE_DESTINATION="${RCLONE_REMOTE_NAME}:${ARG_REMOTE_TARGET_PATH}"
 
 log "--- Backup Configuration"
@@ -139,8 +175,8 @@ log "Backup Prefix: '$ARG_BACKUP_PREFIX'"
 log "Keep Daily: $KEEP_DAILY"
 log "Keep Weekly: $KEEP_WEEKLY"
 log "Keep Monthly: $KEEP_MONTHLY"
+log "Compression Level: $COMPRESSION_LEVEL"
 log "---------------------------"
-
 
 # Main Script
 
@@ -162,7 +198,9 @@ log "Creating archive: $archive_name"
 
 source_dir_basename=$(basename "$ARG_SOURCE_DIR")
 
-if tar -C "$(dirname "$ARG_SOURCE_DIR")" -czf "$temp_archive_path" "$source_dir_basename" --owner=0 --group=0 --use-compress-program="gzip -${COMPRESSION_LEVEL}"; then
+if tar -C "$(dirname "$ARG_SOURCE_DIR")" -cf "$temp_archive_path" "$source_dir_basename" \
+    --owner=0 --group=0 \
+    --use-compress-program="gzip -${COMPRESSION_LEVEL}"; then
   log "Archive created successfully: $temp_archive_path"
 else
   log "Error: Failed to create archive."
@@ -171,13 +209,11 @@ fi
 
 # 2. Upload Backup using rclone
 log "Uploading $archive_name to $FULL_RCLONE_DESTINATION"
-# Using rclone copy ... remote:path/ where path is ARG_REMOTE_TARGET_PATH
-# If ARG_REMOTE_TARGET_PATH ends with /, rclone copies into it. If not, and it's a dir, also into it.
-# If it does not exist, rclone creates it.
-if rclone copy "$temp_archive_path" "$FULL_RCLONE_DESTINATION/" --progress; then # Added trailing slash for clarity
+if rclone copy "$temp_archive_path" "$FULL_RCLONE_DESTINATION/" --progress; then
   log "Upload successful."
 else
   log "Error: rclone upload failed."
+  rm -f "$temp_archive_path"
   exit 1
 fi
 
@@ -187,7 +223,7 @@ log "Local archive $temp_archive_path removed."
 # 3. Remote Backup Retention Management
 log "Starting remote backup retention management for $FULL_RCLONE_DESTINATION"
 
-remote_backups_raw=$(rclone lsf "$FULL_RCLONE_DESTINATION/" --files-only 2>/dev/null || echo "") # Added trailing slash
+remote_backups_raw=$(rclone lsf "$FULL_RCLONE_DESTINATION/" --files-only 2>/dev/null || echo "")
 
 if [ -z "$remote_backups_raw" ]; then
   log "No remote backups found at $FULL_RCLONE_DESTINATION matching the pattern."
@@ -211,14 +247,23 @@ declare -A weekly_kept_weeks=()
 declare -A monthly_kept_months=()
 declare -a to_delete_files=()
 
-current_ts=$(date +%s)
-
 # Function to parse date from backup filename (YYYY-MM-DD from YYYY-MM-DD_prefix.tar.gz or YYYY-MM-DD.tar.gz)
 get_backup_date_from_filename() {
   local filename="$1"
   echo "$filename" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
 }
 
+# Function to get week number in a timezone-safe way
+get_week_number() {
+  local date_str="$1"
+  TZ=UTC date -d "$date_str" '+%Y-%V'
+}
+
+# Function to get month in a timezone-safe way
+get_month() {
+  local date_str="$1"
+  TZ=UTC date -d "$date_str" '+%Y-%m'
+}
 
 for backup_file in "${sorted_backups[@]}"; do
   backup_date_str=$(get_backup_date_from_filename "$backup_file")
@@ -227,8 +272,8 @@ for backup_file in "${sorted_backups[@]}"; do
     continue
   fi
 
-  backup_year_week=$(date -d "$backup_date_str" '+%Y-%V')
-  backup_year_month=$(date -d "$backup_date_str" '+%Y-%m')
+  backup_year_week=$(get_week_number "$backup_date_str")
+  backup_year_month=$(get_month "$backup_date_str")
   is_kept=false
 
   if [ ${#daily_kept_files[@]} -lt "$KEEP_DAILY" ]; then
@@ -280,9 +325,8 @@ if [ ${#to_delete_files[@]} -gt 0 ]; then
   log "Deleting backups..."
   for file_to_delete in "${to_delete_files[@]}"; do
     log "Deleting $FULL_RCLONE_DESTINATION/$file_to_delete"
-    # Ensure the path for deletion is correct, rclone delete remote:path/to/file
     if rclone delete "$FULL_RCLONE_DESTINATION/$file_to_delete"; then
-       log "Successfully deleted $file_to_delete"
+      log "Successfully deleted $file_to_delete"
     else
       log "Error deleting $file_to_delete. Check rclone output."
     fi
