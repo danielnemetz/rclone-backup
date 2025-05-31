@@ -70,7 +70,7 @@ ensure_dir "$INSTALL_DIR"
 
 # Download the backup script
 print_message "$YELLOW" "Downloading backup script..."
-curl -sSL "https://raw.githubusercontent.com/danielnemetz/backup/main/backup.sh" -o "$INSTALL_DIR/backup"
+curl -sSL "https://raw.githubusercontent.com/danielnemetz/rclone-backup/refs/heads/main/backup.sh" -o "$INSTALL_DIR/backup"
 chmod +x "$INSTALL_DIR/backup"
 
 # Create configuration directory

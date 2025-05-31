@@ -9,14 +9,14 @@ You can install the backup script using the provided installation script. The in
 ### Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/danielnemetz/backup/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/danielnemetz/rclone-backup/refs/heads/main/install.sh | bash
 ```
 
 ### Manual Install
 
 1. Download the installation script:
 ```bash
-curl -sSL https://raw.githubusercontent.com/danielnemetz/backup/main/install.sh -o install.sh
+curl -sSL https://raw.githubusercontent.com/danielnemetz/rclone-backup/refs/heads/main/install.sh -o install.sh
 chmod +x install.sh
 ```
 
