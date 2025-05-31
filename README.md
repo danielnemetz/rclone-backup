@@ -60,6 +60,14 @@ Create a `.env` file in the appropriate config directory:
 - Per-user: `~/.config/rclone-backup/.env`
 - Global (optional, for all users): `/etc/rclone-backup/.env`
 
+**Config file selection logic:**
+- The script will use the per-user config at `~/.config/rclone-backup/.env` if it exists.
+- If not, it will fall back to the global config at `/etc/rclone-backup/.env` (if present).
+- You can override the config location by setting the `BACKUP_CONFIG_FILE` environment variable.
+
+**Debugging:**
+- When running, the script prints which config file it is using and when it is sourced. This helps with troubleshooting config issues.
+
 ```bash
 # Required
 RCLONE_REMOTE_NAME="your_remote_name"

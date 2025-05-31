@@ -12,10 +12,12 @@ AUTO_CONFIRM=false              # Default to requiring confirmation
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Configuration File
-CONFIG_FILE="${BACKUP_CONFIG_FILE:-$HOME/.config/backup/.env}"
-if [ ! -f "$CONFIG_FILE" ] && [ -f "/etc/backup/.env" ]; then
-  CONFIG_FILE="/etc/backup/.env"
+CONFIG_FILE="${BACKUP_CONFIG_FILE:-$HOME/.config/rclone-backup/.env}"
+if [ ! -f "$CONFIG_FILE" ] && [ -f "/etc/rclone-backup/.env" ]; then
+  CONFIG_FILE="/etc/rclone-backup/.env"
 fi
+
+echo "DEBUG: Using config file: $CONFIG_FILE"
 
 # Helper Functions
 log() {
@@ -126,8 +128,10 @@ DEFAULT_KEEP_MONTHLY=6
 DEFAULT_COMPRESSION_LEVEL=6
 
 if [ -f "$CONFIG_FILE" ]; then
+  echo "DEBUG: Sourcing $CONFIG_FILE"
   # shellcheck source=.env
   source "$CONFIG_FILE"
+  echo "DEBUG: Sourced $CONFIG_FILE"
 else
   log "Error: Configuration file '$CONFIG_FILE' not found."
   echo "Please create '$CONFIG_FILE' with RCLONE_REMOTE_NAME and KEEP_* settings."
