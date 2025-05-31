@@ -70,15 +70,28 @@ ensure_dir "$INSTALL_DIR"
 
 # Download the backup script
 print_message "$YELLOW" "Downloading backup script..."
-curl -sSL "https://raw.githubusercontent.com/danielnemetz/rclone-backup/refs/heads/main/backup.sh" -o "$INSTALL_DIR/backup"
-chmod +x "$INSTALL_DIR/backup"
+curl -sSL "https://raw.githubusercontent.com/danielnemetz/rclone-backup/refs/heads/main/backup.sh" -o "$INSTALL_DIR/rclone-backup"
+chmod +x "$INSTALL_DIR/rclone-backup"
 
-# Create configuration directory
-CONFIG_DIR="$HOME/.config/backup"
+# Determine config location
+if is_root; then
+    read -r -p "Do you want to create a global config for all users? (y/N): " GLOBAL_CONFIG
+    if [[ "$GLOBAL_CONFIG" =~ ^[Yy]$ ]]; then
+        CONFIG_DIR="/etc/rclone-backup"
+        CONFIG_PATH="/etc/rclone-backup/.env"
+    else
+        CONFIG_DIR="$HOME/.config/rclone-backup"
+        CONFIG_PATH="$CONFIG_DIR/.env"
+    fi
+else
+    CONFIG_DIR="$HOME/.config/rclone-backup"
+    CONFIG_PATH="$CONFIG_DIR/.env"
+fi
 ensure_dir "$CONFIG_DIR"
 
 # Interactive configuration
-print_message "$YELLOW" "\nPlease provide the following configuration details:"
+echo
+print_message "$YELLOW" "Please provide the following configuration details:"
 
 # RCLONE_REMOTE_NAME
 read -r -p "Rclone remote name: " RCLONE_REMOTE_NAME
@@ -106,7 +119,7 @@ COMPRESSION_LEVEL=$(validate_number "$COMPRESSION_LEVEL" "Compression level" 1 9
 
 # Create .env file
 print_message "$YELLOW" "\nCreating configuration file..."
-cat > "$CONFIG_DIR/.env" << EOF
+cat > "$CONFIG_PATH" << EOF
 # Backup Configuration
 RCLONE_REMOTE_NAME="$RCLONE_REMOTE_NAME"
 KEEP_DAILY=$KEEP_DAILY
@@ -115,14 +128,10 @@ KEEP_MONTHLY=$KEEP_MONTHLY
 COMPRESSION_LEVEL=$COMPRESSION_LEVEL
 EOF
 
-# Update the backup script to use the new config location
-sed -i.bak "s|CONFIG_FILE=\"\${SCRIPT_DIR}/.env\"|CONFIG_FILE=\"$CONFIG_DIR/.env\"|" "$INSTALL_DIR/backup"
-rm -f "$INSTALL_DIR/backup.bak"
-
 print_message "$GREEN" "\nInstallation completed successfully!"
-print_message "$YELLOW" "\nThe backup script has been installed to: $INSTALL_DIR/backup"
-print_message "$YELLOW" "Configuration file location: $CONFIG_DIR/.env"
+print_message "$YELLOW" "\nThe backup script has been installed to: $INSTALL_DIR/rclone-backup"
+print_message "$YELLOW" "Configuration file location: $CONFIG_PATH"
 print_message "$YELLOW" "\nYou can now use the backup script with:"
-print_message "$GREEN" "  backup [OPTIONS] <SOURCE_DIR>"
+print_message "$GREEN" "  rclone-backup [OPTIONS] <SOURCE_DIR>"
 print_message "$YELLOW" "\nFor help, run:"
-print_message "$GREEN" "  backup --help"
+print_message "$GREEN" "  rclone-backup --help"

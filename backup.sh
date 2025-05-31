@@ -12,7 +12,10 @@ AUTO_CONFIRM=false              # Default to requiring confirmation
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Configuration File
-CONFIG_FILE="${SCRIPT_DIR}/.env"
+CONFIG_FILE="${BACKUP_CONFIG_FILE:-$HOME/.config/backup/.env}"
+if [ ! -f "$CONFIG_FILE" ] && [ -f "/etc/backup/.env" ]; then
+  CONFIG_FILE="/etc/backup/.env"
+fi
 
 # Helper Functions
 log() {

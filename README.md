@@ -1,10 +1,10 @@
-# Backup Script
+# rclone-backup Script
 
 A robust backup script that creates compressed archives of specified directories and uploads them to a remote storage using rclone. The script includes automatic retention management for daily, weekly, and monthly backups.
 
 ## Installation
 
-You can install the backup script using the provided installation script. The installer will guide you through the configuration process and set up everything automatically.
+You can install the rclone-backup script using the provided installation script. The installer will guide you through the configuration process and set up everything automatically.
 
 ### Quick Install
 
@@ -26,14 +26,15 @@ chmod +x install.sh
 ```
 
 The installer will:
-- Download and install the backup script to the appropriate location
-- Create a configuration directory at `~/.config/backup`
+- Download and install the rclone-backup script to the appropriate location
+- Create a configuration directory at `~/.config/rclone-backup` (or `/etc/rclone-backup` for global config)
 - Guide you through the configuration process
 - Set up the configuration file with your preferences
+- If run as root, you will be offered the option to create a global config at `/etc/rclone-backup/.env` (usable by all users)
 
 The script will be installed to:
-- `/usr/local/bin/backup` if run as root
-- `~/.local/bin/backup` if run as a normal user
+- `/usr/local/bin/rclone-backup` if run as root
+- `~/.local/bin/rclone-backup` if run as a normal user
 
 ## Features
 
@@ -55,7 +56,9 @@ The script will be installed to:
 
 ## Configuration
 
-Create a `.env` file in the same directory as the script with the following variables:
+Create a `.env` file in the appropriate config directory:
+- Per-user: `~/.config/rclone-backup/.env`
+- Global (optional, for all users): `/etc/rclone-backup/.env`
 
 ```bash
 # Required
@@ -71,7 +74,7 @@ COMPRESSION_LEVEL=6 # Compression level (1-9, where 9 is maximum compression)
 ## Usage
 
 ```bash
-./backup.sh [OPTIONS] <SOURCE_DIR>
+rclone-backup [OPTIONS] <SOURCE_DIR>
 ```
 
 ### Arguments
@@ -89,16 +92,16 @@ COMPRESSION_LEVEL=6 # Compression level (1-9, where 9 is maximum compression)
 
 ```bash
 # Basic usage
-./backup.sh /path/to/source
+rclone-backup /path/to/source
 
 # With all options
-./backup.sh -y -r "remote/path" -p "mydata" /path/to/source
+rclone-backup -y -r "remote/path" -p "mydata" /path/to/source
 
 # Using long options
-./backup.sh --yes --remote "remote/path" --prefix "mydata" /path/to/source
+rclone-backup --yes --remote "remote/path" --prefix "mydata" /path/to/source
 
 # Mix of short and long options
-./backup.sh -y --remote "remote/path" -p "mydata" /path/to/source
+rclone-backup -y --remote "remote/path" -p "mydata" /path/to/source
 ```
 
 ## Backup Naming
