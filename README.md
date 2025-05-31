@@ -46,6 +46,8 @@ The script will be installed to:
 - Automatic cleanup of old backups based on retention policies
 - Configurable through environment variables
 - Command-line options for flexible usage
+- Configurable logging levels (DEBUG, INFO, WARNING, ERROR)
+- Modular script structure for better maintainability
 
 ## Prerequisites
 
@@ -77,6 +79,7 @@ KEEP_DAILY=7        # Number of daily backups to keep
 KEEP_WEEKLY=4       # Number of weekly backups to keep
 KEEP_MONTHLY=6      # Number of monthly backups to keep
 COMPRESSION_LEVEL=6 # Compression level (1-9, where 9 is maximum compression)
+LOG_LEVEL="INFO"    # Log level (DEBUG, INFO, WARNING, ERROR)
 ```
 
 ## Usage
@@ -94,6 +97,7 @@ rclone-backup [OPTIONS] <SOURCE_DIR>
 - `-y, --yes`: Automatically confirm deletion of old backups
 - `-r, --remote PATH`: Path on the rclone remote where backups will be stored (default: "./")
 - `-p, --prefix PREFIX`: Prefix for the backup archive name
+- `-l, --log-level LVL`: Set log level (DEBUG, INFO, WARNING, ERROR)
 - `-h, --help`: Show help message
 
 ### Examples
@@ -103,14 +107,28 @@ rclone-backup [OPTIONS] <SOURCE_DIR>
 rclone-backup /path/to/source
 
 # With all options
-rclone-backup -y -r "remote/path" -p "mydata" /path/to/source
+rclone-backup -y -r "remote/path" -p "mydata" -l DEBUG /path/to/source
 
 # Using long options
-rclone-backup --yes --remote "remote/path" --prefix "mydata" /path/to/source
+rclone-backup --yes --remote "remote/path" --prefix "mydata" --log-level DEBUG /path/to/source
 
 # Mix of short and long options
-rclone-backup -y --remote "remote/path" -p "mydata" /path/to/source
+rclone-backup -y --remote "remote/path" -p "mydata" -l WARNING /path/to/source
 ```
+
+## Logging Levels
+
+The script supports four logging levels:
+
+1. **DEBUG**: Shows all messages, including detailed debugging information
+2. **INFO**: Shows informational messages, warnings, and errors (default)
+3. **WARNING**: Shows only warnings and errors
+4. **ERROR**: Shows only error messages
+
+You can set the log level:
+- In the config file using `LOG_LEVEL`
+- Via command line using `-l` or `--log-level`
+- Defaults to "INFO" if not specified
 
 ## Backup Naming
 
@@ -136,6 +154,20 @@ The script uses gzip compression with a configurable compression level (1-9):
 
 You can configure the compression level in the `.env` file using the `COMPRESSION_LEVEL` variable.
 
+## Script Structure
+
+The script is organized into several main functions:
+
+1. **create_backup_archive**: Creates the compressed backup archive
+2. **upload_backup**: Handles the upload to remote storage
+3. **handle_backup_retention**: Manages the retention policy and cleanup
+
+This modular structure makes the script:
+- Easier to maintain
+- More testable
+- More reusable
+- Easier to debug
+
 ## Error Handling
 
 The script includes error handling for:
@@ -145,6 +177,8 @@ The script includes error handling for:
 - Failed archive creation
 - Failed upload
 - Failed deletion of old backups
+- Invalid log levels
+- Invalid compression levels
 
 ## License
 
