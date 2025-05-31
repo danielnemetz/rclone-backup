@@ -117,6 +117,20 @@ read -r -p "Compression level (1-9, default: 6): " COMPRESSION_LEVEL < /dev/tty
 COMPRESSION_LEVEL=${COMPRESSION_LEVEL:-6}
 COMPRESSION_LEVEL=$(validate_number "$COMPRESSION_LEVEL" "Compression level" 1 9)
 
+# LOG_LEVEL
+echo "Available log levels:"
+echo "  DEBUG   - Show all messages, including detailed debugging information"
+echo "  INFO    - Show informational messages, warnings, and errors (default)"
+echo "  WARNING - Show only warnings and errors"
+echo "  ERROR   - Show only error messages"
+read -r -p "Log level (default: INFO): " LOG_LEVEL < /dev/tty
+LOG_LEVEL=${LOG_LEVEL:-INFO}
+while [[ ! "$LOG_LEVEL" =~ ^(DEBUG|INFO|WARNING|ERROR)$ ]]; do
+    print_message "$RED" "Error: Log level must be one of: DEBUG, INFO, WARNING, ERROR"
+    read -r -p "Log level (default: INFO): " LOG_LEVEL < /dev/tty
+    LOG_LEVEL=${LOG_LEVEL:-INFO}
+done
+
 # Create .env file
 print_message "$YELLOW" "\nCreating configuration file..."
 cat > "$CONFIG_PATH" << EOF
@@ -126,6 +140,7 @@ KEEP_DAILY=$KEEP_DAILY
 KEEP_WEEKLY=$KEEP_WEEKLY
 KEEP_MONTHLY=$KEEP_MONTHLY
 COMPRESSION_LEVEL=$COMPRESSION_LEVEL
+LOG_LEVEL="$LOG_LEVEL"
 EOF
 
 print_message "$GREEN" "\nInstallation completed successfully!"

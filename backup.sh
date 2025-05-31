@@ -60,9 +60,6 @@ log_error() {
   log "ERROR" "$1"
 }
 
-# Estimate the dir in which the Script is located
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
 # Configuration File
 CONFIG_FILE="${BACKUP_CONFIG_FILE:-$HOME/.config/rclone-backup/.env}"
 if [ ! -f "$CONFIG_FILE" ] && [ -f "/etc/rclone-backup/.env" ]; then
