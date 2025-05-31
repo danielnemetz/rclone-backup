@@ -2,6 +2,39 @@
 
 A robust backup script that creates compressed archives of specified directories and uploads them to a remote storage using rclone. The script includes automatic retention management for daily, weekly, and monthly backups.
 
+## Installation
+
+You can install the backup script using the provided installation script. The installer will guide you through the configuration process and set up everything automatically.
+
+### Quick Install
+
+```bash
+curl -sSL https://raw.githubusercontent.com/danielnemetz/backup/main/install.sh | bash
+```
+
+### Manual Install
+
+1. Download the installation script:
+```bash
+curl -sSL https://raw.githubusercontent.com/danielnemetz/backup/main/install.sh -o install.sh
+chmod +x install.sh
+```
+
+2. Run the installer:
+```bash
+./install.sh
+```
+
+The installer will:
+- Download and install the backup script to the appropriate location
+- Create a configuration directory at `~/.config/backup`
+- Guide you through the configuration process
+- Set up the configuration file with your preferences
+
+The script will be installed to:
+- `/usr/local/bin/backup` if run as root
+- `~/.local/bin/backup` if run as a normal user
+
 ## Features
 
 - Creates compressed tar.gz archives of specified directories
