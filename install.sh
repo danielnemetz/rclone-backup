@@ -21,7 +21,7 @@ validate_input() {
     local message=$2
     while [ -z "$input" ]; do
         print_message "$RED" "Error: $message cannot be empty"
-        read -r -p "$message: " input
+        read -r -p "$message: " input < /dev/tty
     done
     echo "$input"
 }
@@ -34,7 +34,7 @@ validate_number() {
     local max=$4
     while ! [[ "$input" =~ ^[0-9]+$ ]] || [ "$input" -lt "$min" ] || [ "$input" -gt "$max" ]; do
         print_message "$RED" "Error: $message must be a number between $min and $max"
-        read -r -p "$message: " input
+        read -r -p "$message: " input < /dev/tty
     done
     echo "$input"
 }
@@ -75,7 +75,7 @@ chmod +x "$INSTALL_DIR/rclone-backup"
 
 # Determine config location
 if is_root; then
-    read -r -p "Do you want to create a global config for all users? (y/N): " GLOBAL_CONFIG
+    read -r -p "Do you want to create a global config for all users? (y/N): " GLOBAL_CONFIG < /dev/tty
     if [[ "$GLOBAL_CONFIG" =~ ^[Yy]$ ]]; then
         CONFIG_DIR="/etc/rclone-backup"
         CONFIG_PATH="/etc/rclone-backup/.env"
@@ -94,26 +94,26 @@ echo
 print_message "$YELLOW" "Please provide the following configuration details:"
 
 # RCLONE_REMOTE_NAME
-read -r -p "Rclone remote name: " RCLONE_REMOTE_NAME
+read -r -p "Rclone remote name: " RCLONE_REMOTE_NAME < /dev/tty
 RCLONE_REMOTE_NAME=$(validate_input "$RCLONE_REMOTE_NAME" "Rclone remote name")
 
 # KEEP_DAILY
-read -r -p "Number of daily backups to keep (default: 7): " KEEP_DAILY
+read -r -p "Number of daily backups to keep (default: 7): " KEEP_DAILY < /dev/tty
 KEEP_DAILY=${KEEP_DAILY:-7}
 KEEP_DAILY=$(validate_number "$KEEP_DAILY" "Number of daily backups" 1 365)
 
 # KEEP_WEEKLY
-read -r -p "Number of weekly backups to keep (default: 4): " KEEP_WEEKLY
+read -r -p "Number of weekly backups to keep (default: 4): " KEEP_WEEKLY < /dev/tty
 KEEP_WEEKLY=${KEEP_WEEKLY:-4}
 KEEP_WEEKLY=$(validate_number "$KEEP_WEEKLY" "Number of weekly backups" 1 52)
 
 # KEEP_MONTHLY
-read -r -p "Number of monthly backups to keep (default: 6): " KEEP_MONTHLY
+read -r -p "Number of monthly backups to keep (default: 6): " KEEP_MONTHLY < /dev/tty
 KEEP_MONTHLY=${KEEP_MONTHLY:-6}
 KEEP_MONTHLY=$(validate_number "$KEEP_MONTHLY" "Number of monthly backups" 1 60)
 
 # COMPRESSION_LEVEL
-read -r -p "Compression level (1-9, default: 6): " COMPRESSION_LEVEL
+read -r -p "Compression level (1-9, default: 6): " COMPRESSION_LEVEL < /dev/tty
 COMPRESSION_LEVEL=${COMPRESSION_LEVEL:-6}
 COMPRESSION_LEVEL=$(validate_number "$COMPRESSION_LEVEL" "Compression level" 1 9)
 
