@@ -3,7 +3,10 @@
 # Exit on error, undefined variables, and pipe failures
 set -euo pipefail
 
-# Default values for script arguments
+# Set PATH to include common binary locations
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+# Set default values for script arguments
 DEFAULT_REMOTE_TARGET_PATH="./" # Default path on the rclone remote
 DEFAULT_BACKUP_PREFIX=""        # Default backup prefix (empty)
 AUTO_CONFIRM=false              # Default to requiring confirmation
@@ -19,6 +22,21 @@ declare -A LOG_LEVELS=(
 
 # Current log level (default to INFO)
 CURRENT_LOG_LEVEL="${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}"
+
+# Set default log file location
+LOG_FILE="/var/log/rclone-backup.log"
+LOG_DIR=$(dirname "$LOG_FILE")
+
+# Create log directory if it doesn't exist
+if [ ! -d "$LOG_DIR" ]; then
+    mkdir -p "$LOG_DIR"
+fi
+
+# Check if running in interactive mode (not in cron)
+IS_INTERACTIVE=false
+if [ -t 1 ]; then
+    IS_INTERACTIVE=true
+fi
 
 # Validate log level
 validate_log_level() {
@@ -39,7 +57,16 @@ log() {
 
   # Check if the message's level should be displayed
   if [ "${LOG_LEVELS[$level]}" -ge "${LOG_LEVELS[$CURRENT_LOG_LEVEL]}" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - [$level] - $message"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local log_message="$timestamp - [$level] - $message"
+    
+    # Always write to log file
+    echo "$log_message" >> "$LOG_FILE"
+    
+    # Only output to console if running in interactive mode
+    if $IS_INTERACTIVE; then
+      echo "$log_message"
+    fi
   fi
 }
 
@@ -58,6 +85,12 @@ log_warning() {
 
 log_error() {
   log "ERROR" "$1"
+}
+
+# Function to print messages that should always go to console (like usage)
+print_message() {
+  local message="$1"
+  echo "$message"
 }
 
 # Configuration File
@@ -103,21 +136,21 @@ validate_remote_path() {
 }
 
 usage() {
-  log_info "Usage: $0 [OPTIONS] <SOURCE_DIR>"
-  log_info ""
-  log_info "Arguments:"
-  log_info "  SOURCE_DIR          : Mandatory. Local directory to back up."
-  log_info ""
-  log_info "Options:"
-  log_info "  -y, --yes           : Automatically confirm deletion of old backups"
-  log_info "  -r, --remote PATH   : Path on the rclone remote where backups will be stored"
-  log_info "                        Defaults to '$DEFAULT_REMOTE_TARGET_PATH'"
-  log_info "  -p, --prefix PREFIX : Prefix for the backup archive name"
-  log_info "  -l, --log-level LVL : Set log level (DEBUG, INFO, WARNING, ERROR)"
-  log_info "                        Defaults to '$DEFAULT_LOG_LEVEL'"
-  log_info "  -h, --help          : Show help message"
-  log_info ""
-  log_info "Reads rclone remote name and retention settings from '$CONFIG_FILE'."
+  print_message "Usage: $0 [OPTIONS] <SOURCE_DIR>"
+  print_message ""
+  print_message "Arguments:"
+  print_message "  SOURCE_DIR          : Mandatory. Local directory to back up."
+  print_message ""
+  print_message "Options:"
+  print_message "  -y, --yes           : Automatically confirm deletion of old backups"
+  print_message "  -r, --remote PATH   : Path on the rclone remote where backups will be stored"
+  print_message "                        Defaults to '$DEFAULT_REMOTE_TARGET_PATH'"
+  print_message "  -p, --prefix PREFIX : Prefix for the backup archive name"
+  print_message "  -l, --log-level LVL : Set log level (DEBUG, INFO, WARNING, ERROR)"
+  print_message "                        Defaults to '$DEFAULT_LOG_LEVEL'"
+  print_message "  -h, --help          : Show help message"
+  print_message ""
+  print_message "Reads rclone remote name and retention settings from '$CONFIG_FILE'."
   exit 1
 }
 

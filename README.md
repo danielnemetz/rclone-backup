@@ -48,6 +48,8 @@ The script will be installed to:
 - Command-line options for flexible usage
 - Configurable logging levels (DEBUG, INFO, WARNING, ERROR)
 - Modular script structure for better maintainability
+- CRON-compatible with proper environment setup
+- Comprehensive logging system with file output
 
 ## Prerequisites
 
@@ -129,6 +131,21 @@ You can set the log level:
 - In the config file using `LOG_LEVEL`
 - Via command line using `-l` or `--log-level`
 - Defaults to "INFO" if not specified
+
+All logs are written to `/var/log/rclone-backup.log`. When running in CRON, console output is suppressed and all messages are written to the log file.
+
+## CRON Integration
+
+The script is fully compatible with CRON jobs. When running in CRON:
+- All paths are absolute
+- Environment is properly set up
+- Logs are written to the log file
+- No console output is generated
+
+Example CRON entry (daily backup at 2 AM):
+```bash
+0 2 * * * /usr/local/bin/rclone-backup /path/to/backup
+```
 
 ## Backup Naming
 
