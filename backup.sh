@@ -23,13 +23,42 @@ declare -A LOG_LEVELS=(
 # Current log level (default to INFO)
 CURRENT_LOG_LEVEL="${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}"
 
-# Set default log file location
-LOG_FILE="/var/log/rclone-backup.log"
+# Check if running as root
+IS_ROOT=false
+if [ "$(id -u)" -eq 0 ]; then
+    IS_ROOT=true
+fi
+
+# Set default log file location based on user
+if $IS_ROOT; then
+    # Root user: use system log directory
+    LOG_FILE="/var/log/rclone-backup.log"
+else
+    # Normal user: use user's home directory
+    LOG_FILE="$HOME/.local/log/rclone-backup.log"
+fi
 LOG_DIR=$(dirname "$LOG_FILE")
 
 # Create log directory if it doesn't exist
 if [ ! -d "$LOG_DIR" ]; then
     mkdir -p "$LOG_DIR"
+    # Set appropriate permissions
+    if $IS_ROOT; then
+        chmod 755 "$LOG_DIR"
+    else
+        chmod 700 "$LOG_DIR"
+    fi
+fi
+
+# Create log file if it doesn't exist
+if [ ! -f "$LOG_FILE" ]; then
+    touch "$LOG_FILE"
+    # Set appropriate permissions
+    if $IS_ROOT; then
+        chmod 644 "$LOG_FILE"
+    else
+        chmod 600 "$LOG_FILE"
+    fi
 fi
 
 # Check if running in interactive mode (not in cron)
@@ -59,10 +88,10 @@ log() {
   if [ "${LOG_LEVELS[$level]}" -ge "${LOG_LEVELS[$CURRENT_LOG_LEVEL]}" ]; then
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local log_message="$timestamp - [$level] - $message"
-    
+
     # Always write to log file
     echo "$log_message" >> "$LOG_FILE"
-    
+
     # Only output to console if running in interactive mode
     if $IS_INTERACTIVE; then
       echo "$log_message"
