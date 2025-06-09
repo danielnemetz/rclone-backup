@@ -383,9 +383,9 @@ handle_backup_retention() {
 
   # Construct the grep pattern based on whether BACKUP_PREFIX is set
   if [ -n "$backup_prefix" ]; then
-    remote_grep_pattern="^[0-9]{4}-[0-9]{2}-[0-9]{2}_${backup_prefix}\\.tar\\.gz$"
+    remote_grep_pattern="^[0-9]{4}-[0-9]{2}-[0-9]{2}_${backup_prefix}\\.tar\\.gz(\\.bin)?$"
   else
-    remote_grep_pattern="^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.tar\\.gz$"
+    remote_grep_pattern="^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.tar\\.gz(\\.bin)?$"
   fi
 
   mapfile -t sorted_backups < <(echo "$remote_backups_raw" | grep -E "$remote_grep_pattern" | sort -r)
@@ -403,26 +403,26 @@ handle_backup_retention() {
     backup_year_month=$(get_month "$backup_date_str")
     is_kept=false
 
-    if [ ${#daily_kept_files[@]} -lt "$keep_daily" ]; then
-      daily_kept_files+=("$backup_file")
-      is_kept=true
-      continue
-    fi
-
-    if ! $is_kept && [ ${#weekly_kept_weeks[@]} -lt "$keep_weekly" ]; then
-      if [[ ! -v weekly_kept_weeks[$backup_year_week] ]]; then
-        weekly_kept_weeks[$backup_year_week]="$backup_file"
-        is_kept=true
-        continue
-      fi
-    fi
-
-    if ! $is_kept && [ ${#monthly_kept_months[@]} -lt "$keep_monthly" ]; then
+    # Check monthly retention first
+    if [ ${#monthly_kept_months[@]} -lt "$keep_monthly" ]; then
       if [[ ! -v monthly_kept_months[$backup_year_month] ]]; then
         monthly_kept_months[$backup_year_month]="$backup_file"
         is_kept=true
-        continue
       fi
+    fi
+
+    # Then check weekly retention
+    if [ ${#weekly_kept_weeks[@]} -lt "$keep_weekly" ]; then
+      if [[ ! -v weekly_kept_weeks[$backup_year_week] ]]; then
+        weekly_kept_weeks[$backup_year_week]="$backup_file"
+        is_kept=true
+      fi
+    fi
+
+    # Finally check daily retention
+    if [ ${#daily_kept_files[@]} -lt "$keep_daily" ]; then
+      daily_kept_files+=("$backup_file")
+      is_kept=true
     fi
 
     if ! $is_kept; then
