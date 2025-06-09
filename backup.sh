@@ -123,7 +123,14 @@ print_message() {
 }
 
 # Configuration File
-CONFIG_FILE="${BACKUP_CONFIG_FILE:-$HOME/.config/rclone-backup/.env}"
+_default_config_file_path=""
+if $IS_ROOT; then
+  _default_config_file_path="/etc/rclone-backup/.env"
+else
+  _default_config_file_path="$HOME/.config/rclone-backup/.env"
+fi
+
+CONFIG_FILE="${BACKUP_CONFIG_FILE:-$_default_config_file_path}"
 if [ ! -f "$CONFIG_FILE" ] && [ -f "/etc/rclone-backup/.env" ]; then
   CONFIG_FILE="/etc/rclone-backup/.env"
 fi
