@@ -366,6 +366,12 @@ handle_backup_retention() {
   local keep_weekly="$4"
   local keep_monthly="$5"
 
+  # Declare arrays at the beginning of the function
+  declare -a daily_kept_files=()
+  declare -A weekly_kept_weeks=()
+  declare -A monthly_kept_months=()
+  declare -a to_delete_files=()
+
   log_info "Starting remote backup retention management for $remote_destination"
 
   remote_backups_raw=$(rclone lsf "$remote_destination/" --files-only 2>/dev/null || echo "")
@@ -386,11 +392,6 @@ handle_backup_retention() {
 
   log_info "Found ${#sorted_backups[@]} remote backups matching the pattern '$remote_grep_pattern'."
 
-  declare -a daily_kept_files=()
-  declare -A weekly_kept_weeks=()
-  declare -A monthly_kept_months=()
-  declare -a to_delete_files=()
-
   for backup_file in "${sorted_backups[@]}"; do
     backup_date_str=$(get_backup_date_from_filename "$backup_file")
     if [ -z "$backup_date_str" ]; then
@@ -409,7 +410,7 @@ handle_backup_retention() {
     fi
 
     if ! $is_kept && [ ${#weekly_kept_weeks[@]} -lt "$keep_weekly" ]; then
-      if [ -z "${weekly_kept_weeks[$backup_year_week]}" ]; then
+      if [[ ! -v weekly_kept_weeks[$backup_year_week] ]]; then
         weekly_kept_weeks[$backup_year_week]="$backup_file"
         is_kept=true
         continue
@@ -417,7 +418,7 @@ handle_backup_retention() {
     fi
 
     if ! $is_kept && [ ${#monthly_kept_months[@]} -lt "$keep_monthly" ]; then
-      if [ -z "${monthly_kept_months[$backup_year_month]}" ]; then
+      if [[ ! -v monthly_kept_months[$backup_year_month] ]]; then
         monthly_kept_months[$backup_year_month]="$backup_file"
         is_kept=true
         continue
